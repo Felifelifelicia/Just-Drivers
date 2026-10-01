@@ -469,3 +469,7 @@ Object.assign(window.HW_I18N.ko, {
   popupAgree: "동의하고 입장하기",
   forumNorm: "이곳에서는 운전자를 평가하지 않고, 경험에 공감합니다."
 });
+
+Object.assign(window.HW_I18N.zh, { translateBtn: "翻译成中文", showOriginal: "查看原文", translating: "翻译中…", translateFail: "翻译暂时不可用，请稍后再试", machineNote: "机器翻译，仅供参考", translatedTag: "译" });
+Object.assign(window.HW_I18N.en, { translateBtn: "Translate to English", showOriginal: "Show original", translating: "Translating…", translateFail: "Translation isn’t available right now. Please try again later.", machineNote: "Machine translation, for reference only", translatedTag: "Translated" });
+Object.assign(window.HW_I18N.ko, { translateBtn: "한국어로 번역", showOriginal: "원문 보기", translating: "번역 중…", translateFail: "지금은 번역할 수 없습니다. 잠시 후 다시 시도해 주세요.", machineNote: "기계 번역이며 참고용입니다", translatedTag: "번역" });

@@ -607,11 +607,22 @@
       try {
         const posts = await Store.listPosts(forumCat);
         list.innerHTML = posts.length ? posts.map(p => `
-          <li><a class="post-row" href="#/forum/post/${encodeURIComponent(p.id)}">
+          <li><a class="post-row" href="#/forum/post/${encodeURIComponent(p.id)}" data-pid="${esc(p.id)}">
             <span class="post-cat">${esc(catName(p.category))}</span>
             <h3>${esc(p.title)}</h3>
+            <span class="tr-orig" hidden></span>
             <span class="post-meta">${esc(p.nickname || t("anonymous"))}${sep()}${esc(fmtDate(p.created_at))}</span>
           </a></li>`).join("") : `<li class="empty">${esc(t("emptyPosts"))}</li>`;
+        // 标题语言和当前界面语言不同时，自动显示翻译，并保留原文
+        posts.forEach(p => {
+          if (detectLang(p.title) === lang) return;
+          translateText(p.title, lang).then(tr => {
+            const row = Array.from(list.querySelectorAll(".post-row")).find(r => r.dataset.pid === String(p.id));
+            if (!row || tr === p.title) return;
+            row.querySelector("h3").innerHTML = esc(tr) + ` <span class="tr-tag">${esc(t("translatedTag"))}</span>`;
+            const o = row.querySelector(".tr-orig"); o.textContent = p.title; o.hidden = false;
+          }).catch(() => {});
+        });
       } catch (e) { list.innerHTML = `<li class="empty">${esc(t("loadError"))}</li>`; }
     }
 
@@ -642,9 +653,63 @@
     showWelcomeModal();
   }
 
+  /* ---------- 论坛内容翻译（MyMemory 免费翻译接口，无需密钥） ---------- */
+  const TR_CODE = { zh: "zh-CN", en: "en", ko: "ko" };
+  function detectLang(s) {
+    if (/[\uac00-\ud7af]/.test(s)) return "ko";
+    if (/[\u4e00-\u9fff]/.test(s)) return "zh";
+    return "en";
+  }
+  function decodeEntities(s) { const ta = document.createElement("textarea"); ta.innerHTML = s; return ta.value; }
+  function chunkText(text, max) {
+    const out = [];
+    text.split("\n").forEach(par => {
+      if (!par.trim()) { out.push({ text: "", nl: true }); return; }
+      let buf = "";
+      (par.match(/[^。！？!?.]+[。！？!?.]*/g) || [par]).forEach(sen => {
+        if ((buf + sen).length > max && buf) { out.push({ text: buf }); buf = ""; }
+        while (sen.length > max) { out.push({ text: sen.slice(0, max) }); sen = sen.slice(max); }
+        buf += sen;
+      });
+      if (buf) out.push({ text: buf });
+      out.push({ text: "", nl: true });
+    });
+    return out;
+  }
+  let trCache = {};
+  try { trCache = JSON.parse(localStorage.getItem("hw_tr") || "{}"); } catch (e) {}
+  async function translateText(text, to) {
+    const from = detectLang(text);
+    if (from === to || !text.trim()) return text;
+    const key = from + ">" + to + ":" + text;
+    if (trCache[key]) return trCache[key];
+    let result = "";
+    for (const part of chunkText(text, 450)) {
+      if (part.nl) { result += "\n"; continue; }
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 10000);
+      try {
+        const res = await fetch("https://api.mymemory.translated.net/get?q=" + encodeURIComponent(part.text) +
+          "&langpair=" + TR_CODE[from] + "|" + TR_CODE[to], { signal: ctrl.signal });
+        const data = await res.json();
+        if (Number(data.responseStatus) !== 200) throw new Error("translate " + data.responseStatus);
+        result += decodeEntities(data.responseData.translatedText) + (/[a-z]$/i.test(data.responseData.translatedText) ? " " : "");
+      } finally { clearTimeout(timer); }
+    }
+    result = result.replace(/\n+$/, "").trim();
+    trCache[key] = result;
+    try { localStorage.setItem("hw_tr", JSON.stringify(trCache)); } catch (e) {}
+    return result;
+  }
+
   function reportBtn(type, id) {
     const done = Store.hasReported(type, id);
     return `<button type="button" class="btn-report" data-report="${type}:${esc(id)}" ${done ? "disabled" : ""}>${esc(done ? t("reported") : t("report"))}</button>`;
+  }
+
+  function trButton(sample) {
+    if (detectLang(sample) === lang) return "";
+    return `<button type="button" class="btn-translate">${esc(t("translateBtn"))}</button>`;
   }
 
   async function viewPost(id) {
@@ -656,21 +721,23 @@
     if (!post) { location.hash = "#/forum"; return; }
 
     mount.innerHTML = `
-      <article class="post-full">
+      <article class="post-full" data-tr-block="post">
         <span class="post-cat">${esc(catName(post.category))}</span>
         <h1 tabindex="-1">${esc(post.title)}</h1>
         <p class="post-meta">${esc(post.nickname || t("anonymous"))}${sep()}${esc(fmtDate(post.created_at))}</p>
         <div class="post-body">${esc(post.body)}</div>
-        ${reportBtn("post", post.id)}
+        <p class="tr-note" hidden>${esc(t("machineNote"))}</p>
+        <div class="post-actions">${trButton(post.title + post.body)}${reportBtn("post", post.id)}</div>
       </article>
       <section class="replies">
         <h2>${esc(t("replies"))}</h2>
         <ul class="reply-list">
           ${replies.length ? replies.map(r => `
-            <li>
+            <li data-tr-block="reply:${esc(r.id)}">
               <p class="post-meta">${esc(r.nickname || t("anonymous"))}${sep()}${esc(fmtDate(r.created_at))}</p>
               <div class="post-body">${esc(r.body)}</div>
-              ${reportBtn("reply", r.id)}
+              <p class="tr-note" hidden>${esc(t("machineNote"))}</p>
+              <div class="post-actions">${trButton(r.body)}${reportBtn("reply", r.id)}</div>
             </li>`).join("") : `<li class="empty">${esc(t("noReplies"))}</li>`}
         </ul>
         <form class="reply-form clay" novalidate>
@@ -681,6 +748,24 @@
         </form>
       </section>`;
 
+    const originals = { post: { title: post.title, body: post.body } };
+    replies.forEach(r => { originals["reply:" + r.id] = { body: r.body }; });
+    mount.querySelectorAll(".btn-translate").forEach(b => b.addEventListener("click", async () => {
+      const block = b.closest("[data-tr-block]");
+      const orig = originals[block.dataset.trBlock];
+      const bodyEl = block.querySelector(".post-body"), titleEl = block.querySelector("h1"), note = block.querySelector(".tr-note");
+      if (b.dataset.state === "tr") {
+        bodyEl.textContent = orig.body; if (titleEl && orig.title) titleEl.textContent = orig.title;
+        note.hidden = true; b.dataset.state = ""; b.textContent = t("translateBtn"); return;
+      }
+      b.disabled = true; b.textContent = t("translating");
+      try {
+        const [tb, tt] = await Promise.all([translateText(orig.body, lang), orig.title ? translateText(orig.title, lang) : null]);
+        bodyEl.textContent = tb; if (titleEl && tt) titleEl.textContent = tt;
+        note.hidden = false; b.dataset.state = "tr"; b.textContent = t("showOriginal");
+      } catch (e) { b.textContent = t("translateFail"); }
+      finally { b.disabled = false; }
+    }));
     mount.querySelectorAll("[data-report]").forEach(b => b.addEventListener("click", async () => {
       const [type, tid] = b.dataset.report.split(":");
       try { await Store.report(type, tid); Store.markReported(type, tid); b.textContent = t("reported"); b.disabled = true; }
