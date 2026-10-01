@@ -25,19 +25,28 @@
 
   /* ---------- Supabase REST ---------- */
   async function api(path, opts = {}) {
-    const res = await fetch(cfg.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/" + path, {
-      method: opts.method || "GET",
-      headers: {
-        apikey: cfg.SUPABASE_ANON_KEY,
-        Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY,
-        "Content-Type": "application/json",
-        Prefer: opts.prefer || "return=representation"
-      },
-      body: opts.body ? JSON.stringify(opts.body) : undefined
-    });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const text = await res.text();
-    return text ? JSON.parse(text) : null;
+    const key = cfg.SUPABASE_ANON_KEY.trim();
+    const headers = {
+      apikey: key,
+      "Content-Type": "application/json",
+      Prefer: opts.prefer || "return=representation"
+    };
+    // 旧版 anon key（eyJ 开头）需要同时放在 Authorization 里；新版 sb_publishable_ 密钥只放 apikey
+    if (key.startsWith("eyJ")) headers.Authorization = "Bearer " + key;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000); // 网络太慢时 12 秒后放弃，显示提示而不是一直转圈
+    try {
+      const res = await fetch(cfg.SUPABASE_URL.trim().replace(/\/+$/, "").replace(/\/rest\/v1$/, "") + "/rest/v1/" + path, {
+        method: opts.method || "GET", headers, signal: ctrl.signal,
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        console.error("[Supabase] " + res.status + " " + path + "\n" + text); // 出错时在浏览器控制台留下具体原因
+        throw new Error("HTTP " + res.status);
+      }
+      return text ? JSON.parse(text) : null;
+    } finally { clearTimeout(timer); }
   }
 
   /* ---------- 本地演示数据 ---------- */
