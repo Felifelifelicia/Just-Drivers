@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>就是司机</title>
+  <meta name="description" content="没有“女司机”，只有司机。一个关于消除“女司机”污名的社会倡导项目。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%235A3E2B' stroke-width='3.2' stroke-linecap='round'%3E%3Ccircle cx='20' cy='20' r='15.5'/%3E%3Ccircle cx='20' cy='20' r='4.2'/%3E%3Cpath d='M5.5 17.5c4.5 1 9 1.6 14.5 1.6s10-.6 14.5-1.6M20 24.5v11'/%3E%3C/g%3E%3C/svg%3E">
+  <!-- 字体：小赖（中文手写）、Indie Flower（英文手写）、Gaegu（韩文手写），均通过 jsDelivr 加载 -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@chinese-fonts/xiaolai@3.0.0/dist/Xiaolai/result.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/indie-flower@5.3.0/index.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/gaegu@5.3.0/index.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 手作质感滤镜：chalk 用于大标题的粉笔肌理，rough 用于线条的不规则边缘 -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <filter id="chalk" x="-5%" y="-10%" width="110%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.8" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="1" seed="9" result="g"/>
+      <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -3.2 0 0 0 2.75" result="m"/>
+      <feComposite in="d" in2="m" operator="in"/>
+    </filter>
+    <filter id="rough" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="2" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
+
+  <a class="skip" href="javascript:void(0)" onclick="document.getElementById('app').focus()">跳到正文 / Skip to content</a>
+  <header id="site-header"></header>
+  <main id="app" tabindex="-1"></main>
+  <footer id="site-footer"></footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/content.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
